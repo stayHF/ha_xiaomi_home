@@ -107,6 +107,7 @@ class Cover(MIoTServiceEntity, CoverEntity):
     _prop_position_value_range: Optional[int]
     _prop_pos_closing: bool
     _prop_pos_opening: bool
+    _last_pos: Optional[int]
 
     def __init__(self, miot_device: MIoTDevice,
                  entity_data: MIoTEntityData) -> None:
@@ -134,6 +135,7 @@ class Cover(MIoTServiceEntity, CoverEntity):
         self._prop_position_value_range = None
         self._prop_pos_closing = False
         self._prop_pos_opening = False
+        self._last_pos = None
 
         # properties
         for prop in entity_data.props:
@@ -270,18 +272,23 @@ class Cover(MIoTServiceEntity, CoverEntity):
             # position when the current position is not defined in the device's
             # MIoT-Spec-V2.
             if self._prop_target_position is None:
-                return None
+                return self._last_pos
             self._prop_pos_opening = False
             self._prop_pos_closing = False
-            return self.get_prop_value(prop=self._prop_target_position)
+            pos = self.get_prop_value(prop=self._prop_target_position)
+            if pos is not None:
+                self._last_pos = pos
+            return pos
+
         pos = self.get_prop_value(prop=self._prop_current_position)
         if pos is None:
-            return None
+            return self._last_pos
         pos = round(pos*100/self._prop_position_value_range)
         if pos <= self._cover_dead_zone_width:
             pos = 0
         elif pos >= (100 - self._cover_dead_zone_width):
             pos = 100
+        self._last_pos = pos
         return pos
 
     @property
